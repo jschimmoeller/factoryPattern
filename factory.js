@@ -7,6 +7,8 @@ let subscription;
 
 class Factory {
   constructor(nbrWorks=2, cb=(msg)=>{console.log(msg)}){
+    this._cbFinished;
+    this._finishedCalled = false;
     workers = [];
     queue = [];
     // building workers
@@ -30,6 +32,10 @@ class Factory {
     this.doWork(pathToWork);
   }
 
+  registerFinished(cb){
+    this._cbFinished = cb;
+  }
+
   workFinished(err, data){
       if (err){
         //do x
@@ -39,7 +45,20 @@ class Factory {
         const newJob = queue.shift();
         this.doWork(newJob);
       } else {
-        subscription('nothing left' )
+        const busyWorkers = workers.filter((w)=>{
+          //console.log('wwwww:', w._id, w.status );
+          if (w.status != 'idle'){
+            return w;
+          }
+        });
+        //console.log(' ===== ', busyWorkers.length === 0 )
+        if (this._cbFinished && busyWorkers.length === 0 && !this._finishedCalled ){
+          this._cbFinished();
+          this._finishedCalled = true;
+          setTimeout(()=>{
+            this._finishedCalled = false;
+          }, 5000);
+        }
       }
   }
 
